@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <defs>
+    <linearGradient id="sanify-seed" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fac9a0"/>
+      <stop offset="100%" stop-color="#a8632a"/>
+    </linearGradient>
+  </defs>
+  <path d="M3 5 C5.5 4.5, 8 6.5, 12 9 C16 6.5, 18.5 4.5, 21 5 C19 8, 17 10, 15 11.5 C14.8 13, 14.5 14.5, 14.5 16 L9.5 16 C9.5 14.5, 9.2 13, 9 11.5 C7 10, 5 8, 3 5 Z" fill="#a6e3a1" transform="translate(2, 2)"/>
+  <path d="M3 5 C5.5 4.5, 8 6.5, 12 9 C16 6.5, 18.5 4.5, 21 5 C19 8, 17 10, 15 11.5 C14.8 13, 14.5 14.5, 14.5 16 L9.5 16 C9.5 14.5, 9.2 13, 9 11.5 C7 10, 5 8, 3 5 Z" fill="#f9e2af" transform="translate(1, 1)"/>
+  <path d="M3 5 C5.5 4.5, 8 6.5, 12 9 C16 6.5, 18.5 4.5, 21 5 C19 8, 17 10, 15 11.5 C14.8 13, 14.5 14.5, 14.5 16 L9.5 16 C9.5 14.5, 9.2 13, 9 11.5 C7 10, 5 8, 3 5 Z" fill="#fab387"/>
+  <ellipse cx="12" cy="19.5" rx="3.5" ry="1.5" fill="url(#sanify-seed)"/>
+</svg>

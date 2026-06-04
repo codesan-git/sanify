@@ -1,0 +1,39 @@
+{
+  "name": "@sanify/core",
+  "version": "0.4.0",
+  "description": "Sanify Frontend core — fine-grained reactivity, Web Components, store, router, resource, forms. CSR-only, ~10 KB gzip, no virtual DOM",
+  "type": "module",
+  "license": "MIT",
+  "author": "Satria Agung Nugraha",
+  "keywords": ["web-components", "reactive", "signals", "frontend", "fine-grained"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codesan-git/sanify.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/codesan-git/sanify#readme",
+  "bugs": {
+    "url": "https://github.com/codesan-git/sanify/issues"
+  },
+  "files": ["dist", "src"],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "bun": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && bun build ./src/index.ts --outdir ./dist --format esm --packages external && tsc -p tsconfig.build.json",
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "latest"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  }
+}

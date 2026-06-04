@@ -1,0 +1,14 @@
+# Dependencies + build output
+node_modules/
+dist/
+packages/*/dist/
+example/dist/
+
+# OS / editor noise
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Claude Code session state — local-only
+.claude/

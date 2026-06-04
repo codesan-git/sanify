@@ -1,0 +1,66 @@
+/*
+  Theme: Catppuccin Latte — orange & green pastel variant
+  Dark:  Catppuccin Mocha — same primaries (pastel-native)
+
+  Untuk Tailwind v4 build pipeline (tanpa CDN):
+    1. Pasang: bun add -d tailwindcss
+    2. Di CSS entry point: @import "tailwindcss";
+    3. Tambahkan: @theme inline { --color-primary: var(--primary); ... }
+    Tidak ada tailwind.config.ts — konfigurasi dilakukan via CSS.
+
+  Gunakan kelas Tailwind saat CDN aktif:
+    bg-background / text-foreground        ← warna dasar halaman
+    bg-card / text-card-foreground         ← panel & kartu
+    bg-primary / text-primary-foreground   ← orange pastel
+    bg-secondary / text-secondary-foreground ← green pastel
+    bg-muted / text-muted-foreground       ← elemen subtle
+    border-border, ring-ring
+
+  Dark mode: tambahkan class "dark" pada <html>.
+*/
+
+/* ── Light (Catppuccin Latte base) ───────────────────────────────────────── */
+:root {
+  --background:          #eff1f5;
+  --foreground:          #4c4f69;
+
+  --card:                #e6e9ef;
+  --card-foreground:     #4c4f69;
+
+  /* Orange pastel — turunan Latte Peach, dilunakkan */
+  --primary:             #f5a97f;
+  --primary-foreground:  #2a1505;
+
+  /* Green pastel — turunan Latte Green, dilunakkan */
+  --secondary:           #94c9a3;
+  --secondary-foreground:#0d2416;
+
+  --muted:               #dce0e8;
+  --muted-foreground:    #6c6f85;
+
+  --border:              #ccd0da;
+  --ring:                #f5a97f;
+}
+
+/* ── Dark (Catppuccin Mocha base) ────────────────────────────────────────── */
+.dark {
+  --background:          #1e1e2e;
+  --foreground:          #cdd6f4;
+
+  --card:                #181825;
+  --card-foreground:     #cdd6f4;
+
+  /* Mocha Peach — sudah pastel secara native */
+  --primary:             #fab387;
+  --primary-foreground:  #1e1e2e;
+
+  /* Mocha Green — sudah pastel secara native */
+  --secondary:           #a6e3a1;
+  --secondary-foreground:#1e1e2e;
+
+  --muted:               #313244;
+  --muted-foreground:    #a6adc8;
+
+  --border:              #45475a;
+  --ring:                #fab387;
+}

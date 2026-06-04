@@ -1,0 +1,26 @@
+{
+  "name": "sanify",
+  "private": true,
+  "type": "module",
+  "author": "Satria Agung Nugraha",
+  "license": "MIT",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "bun run dev-server.ts",
+    "build": "bun run --filter '*' build",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test",
+    "size": "bun run scripts/size.ts",
+    "bench": "bun run scripts/bench.ts"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.10.1",
+    "@sanify/core": "workspace:*",
+    "@types/bun": "latest",
+    "happy-dom": "^20.10.1",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  }
+}
