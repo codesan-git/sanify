@@ -3,7 +3,7 @@
 // `${...}` di template, lalu ditangani bindChild seperti biasa.
 
 import { computed, type Getter } from "../reactivity/signal.ts";
-import { For } from "./template.ts";
+import { For, TransitionGroup } from "./template.ts";
 
 // Tampilkan `children` saat `when` truthy, jika tidak `fallback`. Hanya
 // merender ulang saat truthiness BERUBAH (bukan tiap perubahan dependency).
@@ -54,3 +54,6 @@ export function Index<T>(
 ) {
   return For(each, render, { key: (_item, i) => i });
 }
+
+// Re-export TransitionGroup untuk discoverability.
+export { TransitionGroup };

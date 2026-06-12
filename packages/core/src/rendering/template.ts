@@ -427,6 +427,7 @@ const ERROR_BOUNDARY = Symbol("sanify.errorBoundary");
 const SUSPENSE = Symbol("sanify.suspenseDir");
 const DYNAMIC = Symbol("sanify.dynamic");
 const TRANSITION = Symbol("sanify.transition");
+const TRANSITION_GROUP = Symbol("sanify.transitionGroup");
 
 interface ProvideDirective {
   [PROVIDE]: true;
@@ -535,6 +536,37 @@ export function Transition(
   options: TransitionOptions = {},
 ): TransitionDirective {
   return { [TRANSITION]: true, name, children, options };
+}
+
+// ── TransitionGroup: animasi enter/leave untuk list ──────────
+
+interface TransitionGroupDirective<T> {
+  [TRANSITION_GROUP]: true;
+  name: string;
+  each: () => readonly T[];
+  render: (item: Getter<T>, index: Getter<number>) => unknown;
+  key: (item: T, index: number) => unknown;
+  options: TransitionOptions;
+}
+
+// Bungkus list dengan animasi CSS enter/leave per-item. Menggantikan For
+// saat butuh transisi item masuk/keluar. Item baru dapat class
+// `${name}-enter`; item hilang dapat `${name}-leave` lalu di-remove
+// setelah animasi selesai (atau fallback timer).
+export function TransitionGroup<T>(
+  name: string,
+  each: () => readonly T[],
+  render: (item: Getter<T>, index: Getter<number>) => unknown,
+  options: { key?: (item: T, index: number) => unknown } & TransitionOptions = {},
+): TransitionGroupDirective<T> {
+  return {
+    [TRANSITION_GROUP]: true,
+    name,
+    each,
+    render,
+    key: options.key ?? ((item) => item),
+    options,
+  };
 }
 
 function prefersReducedMotion(): boolean {
@@ -650,6 +682,105 @@ function bindTransition(
   });
 }
 
+// ── TransitionGroup handler ──────────────────────────────────
+
+function bindTransitionGroup(
+  _start: Comment,
+  end: Comment,
+  dir: TransitionGroupDirective<unknown>,
+): void {
+  let rows = new Map<unknown, Row>();
+  let pendingRemove: { row: Row; timer: ReturnType<typeof setTimeout> }[] = [];
+
+  onCleanup(() => {
+    for (const row of rows.values()) row.owner.dispose();
+    for (const pr of pendingRemove) {
+      clearTimeout(pr.timer);
+      pr.row.owner.dispose();
+      removeRange(pr.row.start, pr.row.end);
+    }
+  });
+
+  const duration = dir.options.duration ?? 500;
+  const skipAnim = prefersReducedMotion();
+
+  effect(() => {
+    const items = dir.each();
+    const keys = items.map((it: unknown, i: number) => dir.key(it, i));
+    const next = new Map<unknown, Row>();
+
+    for (let i = 0; i < items.length; i++) {
+      const k = keys[i];
+      let existing = rows.get(k);
+      if (!existing) {
+        const pi = pendingRemove.findIndex((pr) => {
+          for (const [rk, rv] of rows) {
+            if (rv === pr.row && rk === k) return true;
+          }
+          return false;
+        });
+        if (pi >= 0) {
+          const pr = pendingRemove[pi]!;
+          clearTimeout(pr.timer);
+          pendingRemove.splice(pi, 1);
+          existing = pr.row;
+          const cls = collectElements(existing.start, existing.end);
+          if (cls.length > 0) {
+            animateClass(cls, dir.name + "-leave", 0, () => {});
+          }
+        }
+      }
+      if (existing) {
+        rows.delete(k);
+        existing.setItem(() => items[i]);
+        existing.setIndex(() => i);
+        next.set(k, existing);
+      } else {
+        const row = createRow(items[i] as unknown, i, dir as unknown as ForDirective<unknown>, end);
+        next.set(k, row);
+        if (!skipAnim) {
+          const els = collectElements(row.start, row.end);
+          if (els.length > 0) {
+            animateClass(els, dir.name + "-enter", duration, () => {});
+          }
+        }
+      }
+    }
+
+    for (const row of rows.values()) {
+      if (skipAnim) {
+        row.owner.dispose();
+        removeRange(row.start, row.end);
+        continue;
+      }
+      const els = collectElements(row.start, row.end);
+      if (els.length > 0) {
+        const timer = setTimeout(() => {
+          row.owner.dispose();
+          removeRange(row.start, row.end);
+          pendingRemove = pendingRemove.filter((pr) => pr.row !== row);
+        }, duration);
+        pendingRemove.push({ row, timer });
+        animateClass(els, dir.name + "-leave", duration, () => {});
+      } else {
+        row.owner.dispose();
+        removeRange(row.start, row.end);
+      }
+    }
+
+    let anchor: Node = end;
+    for (let i = keys.length - 1; i >= 0; i--) {
+      const row = next.get(keys[i]!);
+      if (row && row.end.nextSibling !== anchor) {
+        moveRange(row.start, row.end, anchor);
+      }
+      if (row) anchor = row.start;
+    }
+
+    rows = next;
+  });
+}
+
 function isBranded(v: unknown, key: symbol): boolean {
   return typeof v === "object" && v !== null && (v as Record<symbol, unknown>)[key] === true;
 }
@@ -740,6 +871,10 @@ function bindChild(start: Comment, end: Comment, value: unknown): void {
   }
   if (isBranded(value, TRANSITION)) {
     bindTransition(start, end, value as TransitionDirective);
+    return;
+  }
+  if (isBranded(value, TRANSITION_GROUP)) {
+    bindTransitionGroup(start, end, value as TransitionGroupDirective<unknown>);
     return;
   }
   if (isBranded(value, DYNAMIC)) {

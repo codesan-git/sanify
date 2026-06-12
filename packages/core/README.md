@@ -42,11 +42,11 @@ Quick start a project: `bun create sanify my-app`.
 | **Reactivity** | `signal`, `effect`, `computed`, `batch`, `untrack`, `on`, `onCleanup`, `onMount`, `createRoot`, `createOwner`, `runWithOwner`, `Owner` |
 | **Helpers** | `createSelector`, `debounced`, `throttled` |
 | **Context** | `createContext`, `useContext`, `provide` |
-| **Template** | `html`, `render`, `For` (keyed list with DOM reuse) |
-| **Control-flow** | `Show`, `Switch`/`Match`, `Index`, `Dynamic`, `Transition` (enter/leave CSS), `Portal`, `ErrorBoundary`, `Suspense` |
+| **Template** | `html`, `render`, `For` (keyed list with DOM reuse), `TransitionGroup` (animated list) |
+| **Control-flow** | `Show`, `Switch`/`Match`, `Index`, `Dynamic`, `Transition` (enter/leave CSS), `TransitionGroup` (list animation), `Portal`, `ErrorBoundary`, `Suspense` |
 | **Component** | `component` (Web Component + HMR + reconnect-tolerant) |
 | **Store** | `createStore` + `produce` (Proxy-backed nested, fine-grained per leaf), `persisted` (localStorage + cross-tab sync) |
-| **Form** | `createForm`, `schema`, `validators` (`v.string`, `v.email`, `v.number`, `v.boolean`, `v.custom`) |
+| **Form** | `createForm` (field-level + async validation), `schema`, `validators` (`v.string`, `v.email`, `v.number`, `v.boolean`, `v.custom`) |
 | **Router** | `router` (nested, layout, guard, loader, scroll restoration), `lazy`, `navigate`, `redirect`, `back`, `forward`, `current`, `params`, `query` |
 | **Resource (read)** | `resource` (reactive fetch + cache + dedupe + SWR + AbortController + GC), `invalidate`, `setResourceData`, `getResourceData` |
 | **Resource (write)** | `mutation` (loading/error/data + auto-invalidate) |

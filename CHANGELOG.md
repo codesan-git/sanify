@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.5.0] — 2026-06-12
+
+### Added
+
+**Form — field-level validation**
+- `fieldValidators` option: per-field sync validators that run in isolation on blur/input.
+  Submit still validates all fields at once. The `schema()` builder now attaches a
+  `.fields` property, so passing `schema({...})` as `validate` automatically enables
+  field-level validation — zero extra setup.
+- `asyncFieldValidators` option: per-field async validators that run on blur.
+  Error results are written to the errors store. `validating()` signal is `true`
+  while any async validation is in-flight. `handleSubmit()` automatically waits
+  for pending async validators before calling `onSubmit`.
+
+**Rendering — TransitionGroup**
+- `TransitionGroup(name, each, render, options?)` directive: wraps a keyed list
+  with CSS enter/leave animations per item. New items get `${name}-enter` class;
+  removed items get `${name}-leave` class and are cleaned up after the animation
+  completes (or fallback timer). Respects `prefers-reduced-motion: reduce`.
+  Reorder keeps DOM elements alive (like `For`). FLIP animations for position
+  changes are not yet supported.
+
+**Types**
+- `AsyncFieldValidator` type — `(value: unknown) => Promise<string | undefined>`
+- `SchemaResult<T>` type — callable validate function with `.fields` property
+- `validating` getter added to `Form<T>` interface
+- `TransitionGroupDirective`, `TransitionGroup` exported from core
+
+### Changed
+
+- `handleSubmit()` return type widened to `void | Promise<void>` — it returns a
+  Promise when async validators are in-flight.
+- `schema()` now returns `SchemaResult<T>` (backward-compatible: still callable).
+
+### Fixed
+
+- Internal `fields` extraction in `createForm` uses a simpler guard (no more nested
+  ternary with potential precedence issues).
+
+---
+
 All notable changes to `@sanify/core` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

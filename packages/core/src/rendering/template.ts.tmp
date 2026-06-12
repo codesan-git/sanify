@@ -1,0 +1,27 @@
+
+// ── TransitionGroup ──────────────────────────────────────────
+
+interface TransitionGroupDirective<T> {
+  [TRANSITION_GROUP]: true;
+  name: string;
+  each: () => readonly T[];
+  render: (item: Getter<T>, index: Getter<number>) => unknown;
+  key: (item: T, index: number) => unknown;
+  options: TransitionOptions;
+}
+
+export function TransitionGroup<T>(
+  name: string,
+  each: () => readonly T[],
+  render: (item: Getter<T>, index: Getter<number>) => unknown,
+  options: { key?: (item: T, index: number) => unknown } & TransitionOptions = {},
+): TransitionGroupDirective<T> {
+  return {
+    [TRANSITION_GROUP]: true,
+    name,
+    each,
+    render,
+    key: options.key ?? ((item) => item),
+    options,
+  };
+}

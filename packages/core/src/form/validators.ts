@@ -1,12 +1,14 @@
 // validators.ts — primitif validator minimal untuk createForm. Tidak punya
-// async, transform, union, atau composer — sengaja: 85% kebutuhan form
+// transform, union, atau composer — sengaja: 85% kebutuhan form
 // (required/type/min/max/pattern/custom) ditutup dengan API tipis. Untuk
 // kasus lebih kompleks, user bawa Zod/Valibot sendiri lewat `validate` manual.
+// Async validation didukung lewat fieldValidators/asyncFieldValidators di form.
 
 import type { Errors } from "./form.ts";
 
 type Result = string | undefined;
 export type FieldValidator = (value: unknown) => Result;
+export type AsyncFieldValidator = (value: unknown) => Promise<Result>;
 
 // Override pesan error per-rule (atau satu string untuk semua rule field ini).
 type StringMsg = string | Partial<Record<"required" | "min" | "max" | "pattern" | "type", string>>;
@@ -146,13 +148,19 @@ function email(opts: EmailOptions = {}): FieldValidator {
 
 export const validators = { string, number, boolean, custom, email };
 
+// Hasil schema(): callable sebagai validate, plus .fields untuk field-level.
+export type SchemaResult<T extends Record<string, unknown>> = ((
+  values: T,
+) => Errors<T>) & { fields: Partial<Record<keyof T, FieldValidator>> };
+
 // Bangun fungsi `validate` yang dipasang ke createForm. Tiap key di `shape`
 // menjalankan validator-nya pada field bernama sama; error pertama per field
-// dikumpulkan ke Errors<T>.
+// dikumpulkan ke Errors<T>. Properti `.fields` bisa dipakai createForm untuk
+// validasi per-field (blur/input) tanpa menjalankan semua validator.
 export function schema<T extends Record<string, unknown>>(
   shape: Partial<Record<keyof T, FieldValidator>>,
-): (values: T) => Errors<T> {
-  return (values) => {
+): SchemaResult<T> {
+  const fn = (values: T): Errors<T> => {
     const errors = {} as Errors<T>;
     for (const key in shape) {
       const validator = shape[key];
@@ -162,4 +170,6 @@ export function schema<T extends Record<string, unknown>>(
     }
     return errors;
   };
+  (fn as unknown as { fields: typeof shape }).fields = shape;
+  return fn as SchemaResult<T>;
 }

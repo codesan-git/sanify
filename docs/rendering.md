@@ -4,7 +4,7 @@ Source: `packages/core/src/rendering/`
 
 The rendering layer turns reactive state into DOM. It has three files:
 
-- `template.ts` — `html` tagged templates, the runtime compiler, the fine-grained binding engine, the `For` keyed list, plus the scope directives (`Portal`, `ErrorBoundary`, `Suspense`, `Dynamic`, `provide`).
+- `template.ts` — `html` tagged templates, the runtime compiler, the fine-grained binding engine, the `For` keyed list, the `TransitionGroup` animated list, plus the scope directives (`Portal`, `ErrorBoundary`, `Suspense`, `Dynamic`, `Transition`, `provide`).
 - `flow.ts` — control-flow primitives (`Show`, `Switch`/`Match`, `Index`) built on top of `template.ts`.
 - `component.ts` — `component(tag, setup, options?)` registers a native Web Component with auto-disposed reactive scope and HMR-friendly re-mount.
 
@@ -19,6 +19,7 @@ There is no virtual DOM. Each `${...}` hole in a template becomes a small effect
 | `html` | tagged literal | Captures `{ strings, values }`; doesn't parse yet |
 | `render` | `(result, container) => void` | Renders a `TemplateResult` into a DOM container |
 | `For` | `(each, render, { key? }) => directive` | Keyed list with local reconciliation |
+| `TransitionGroup` | `(name, each, render, options?) => directive` | Keyed list with CSS enter/leave animations per item |
 
 ### Control flow
 
@@ -115,6 +116,33 @@ The `each` getter is tracked. When the list changes, `For` matches new items to 
 Default key is identity (the item itself). Provide a stable `key` for primitives or to survive mutation.
 
 `Index` is the same primitive with key by position — DOM is preserved per index slot and item changes flow through as updates. Good for lists of primitives or when ordering is stable.
+
+### `TransitionGroup` — animated list
+
+```ts
+TransitionGroup(
+  "list",
+  () => todos(),
+  (todo) => html`<li>${() => todo().text}</li>`,
+  { key: (t) => t.id, duration: 300 },
+);
+```
+
+```css
+.list-enter { animation: fade-in 300ms ease; }
+.list-leave { animation: fade-out 300ms ease; }
+@keyframes fade-in  { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes fade-out { to   { opacity: 0; transform: translateY(8px); } }
+```
+
+`TransitionGroup` combines `For`-style keyed list reconciliation with CSS enter/leave animations per item. On each update:
+
+- **New items** are inserted with class `${name}-enter`. The class is removed after `animationend`/`transitionend` (or the `duration` fallback, default 500ms).
+- **Removed items** get class `${name}-leave`. After the animation finishes, their DOM is removed and their reactive scope is disposed.
+- **Reordered items** are moved in the DOM (like `For`) — no animation on move (FLIP is not yet supported).
+- **Respects** `prefers-reduced-motion: reduce` — all animations are skipped, making content swaps instant.
+
+Only two CSS classes (enter/leave), same model as `Transition`. Use `@keyframes` for declarative animations.
 
 ## Control flow
 

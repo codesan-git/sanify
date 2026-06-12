@@ -106,11 +106,11 @@ The whole API surface lives under five modules. Each has its own deep-dive:
 | Module | Source | Docs | What's inside |
 | --- | --- | --- | --- |
 | **Reactivity** | `packages/core/src/reactivity/` | [docs/reactivity.md](./docs/reactivity.md) | `signal`, `effect`, `computed`, `batch`, `untrack`, `on`, owner/context, `createSelector`, `debounced`, `throttled`, `__debug` |
-| **Rendering** | `packages/core/src/rendering/` | [docs/rendering.md](./docs/rendering.md) | `html`, `render`, `For`, `Show`, `Switch`, `Match`, `Index`, `Portal`, `ErrorBoundary`, `Suspense`, `Dynamic`, `Transition`, `provide`, `component` |
+| **Rendering** | `packages/core/src/rendering/` | [docs/rendering.md](./docs/rendering.md) | `html`, `render`, `For`, `TransitionGroup`, `Show`, `Switch`, `Match`, `Index`, `Portal`, `ErrorBoundary`, `Suspense`, `Dynamic`, `Transition`, `provide`, `component` |
 | **Resource** | `packages/core/src/resource/` | [docs/resource.md](./docs/resource.md) | `resource` (read), `mutation` (write), `createClient` (interceptors), cache helpers, AbortController integration, Suspense |
 | **Router** | `packages/core/src/router/` | [docs/router.md](./docs/router.md) | `router`, `lazy`, `navigate`, `params`, `query`, nested routes, guards, loaders |
 | **Store** | `packages/core/src/store/` | [docs/store.md](./docs/store.md) | `createStore`, `produce`, `persisted` (cross-tab sync) |
-| **Form** | `packages/core/src/form/` | [docs/form.md](./docs/form.md) | `createForm` (values, errors, touched, submit lifecycle, `register()` for spread), `schema` + `validators` |
+| **Form** | `packages/core/src/form/` | [docs/form.md](./docs/form.md) | `createForm` (values, errors, touched, submit lifecycle, field-level + async validation, `register()` for spread), `schema` + `validators` |
 
 Below is the cheat sheet — head into the per-module docs for everything else.
 
@@ -310,7 +310,7 @@ bun add @sanify/core
 import {
   signal, effect, computed, batch, untrack, on,
   createContext, useContext, createRoot, createOwner, runWithOwner,
-  html, render, For, Show, Switch, Match, Index,
+  html, render, For, TransitionGroup, Show, Switch, Match, Index,
   Portal, ErrorBoundary, Suspense, Dynamic, Transition, provide,
   component,
   resource, mutation, invalidate, setResourceData, getResourceData,
@@ -360,6 +360,7 @@ cd ../create-sanify      && npm publish --access public
 | 1 | Template parser is a state-aware scanner, not a full HTML parser | Quoted & multi-part attributes and `<div ${spread}>` work; literal `<`/`>` in text and holes inside tag names are not supported |
 | 2 | Cross-tick component reconnect | Synchronous moves (e.g. `For` reorder) preserve state; reconnects across a microtask gap rebuild from scratch |
 | 3 | Router loaders don't auto-integrate with `Suspense` | They're created at `router()` build time, before any user-level `Suspense` boundary exists. Render `Suspense` with your own `resource()` inside the component if you need a fallback |
+| 4 | `TransitionGroup` reorder has no FLIP animation | Items are moved in DOM correctly, but no position-animation; enter/leave only |
 
 ## Out of scope: SSR
 

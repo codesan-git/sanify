@@ -31,6 +31,7 @@ export {
   Suspense,
   Dynamic,
   Transition,
+  TransitionGroup,
 } from "./rendering/template.ts";
 export type { TemplateResult, TransitionOptions } from "./rendering/template.ts";
 
@@ -52,6 +53,8 @@ export type { Form, FormOptions, FieldProps, ValidateTrigger, Errors } from "./f
 export { validators, schema } from "./form/validators.ts";
 export type {
   FieldValidator,
+  AsyncFieldValidator,
+  SchemaResult,
   StringOptions,
   NumberOptions,
   BooleanOptions,

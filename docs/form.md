@@ -2,7 +2,7 @@
 
 Source: `packages/core/src/form/form.ts`
 
-A thin form primitive built on top of `createStore` + `signal`. Two-way binding is **explicit** (you spread `form.register(name)` into each input you want bound), and validation runs **only on submit** by default — opt into `"blur"` or `"input"` if you want earlier feedback.
+A thin form primitive built on top of `createStore` + `signal`. Two-way binding is **explicit** (you spread `form.register(name)` into each input you want bound), and validation runs **only on submit** by default — opt into `"blur"` or `"input"` if you want earlier feedback. **Field-level validation** automatically runs only the validator for the field being changed (no wasted work). **Async validation** is supported per-field — useful for uniqueness checks against a server.
 
 ## API
 
@@ -10,8 +10,8 @@ A thin form primitive built on top of `createStore` + `signal`. Two-way binding 
 | Export            | Signature              | Purpose                                                                                                  |
 | ----------------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
 | `createForm`      | `<T>(opts) => Form<T>` | Build a form with reactive values, errors, touched, submit lifecycle                                     |
-| `Form<T>`         | type                   | `{ values, errors, touched, submitting, submitCount, isValid, register, handleSubmit, setField, reset }` |
-| `FormOptions<T>`  | type                   | `{ initialValues, validate?, onSubmit, validateOn? }`                                                    |
+| `Form<T>`         | type                   | `{ values, errors, touched, submitting, validating, submitCount, isValid, register, handleSubmit, setField, reset }` |
+| `FormOptions<T>`  | type                   | `{ initialValues, validate?, fieldValidators?, asyncFieldValidators?, onSubmit, validateOn? }`            |
 | `FieldProps`      | type                   | What `register()` returns — pass it as a spread to an input                                              |
 | `ValidateTrigger` | type                   | `"submit" | "blur" | "input"`                                                                            |
 
@@ -91,6 +91,7 @@ Anything more exotic (file inputs, custom widgets) you write the handler yoursel
 | `errors`      | yes (per leaf via `createStore`) | Populated by `validate()`; cleared keys disappear                             |
 | `touched`     | yes (per leaf via `createStore`) | Flipped to `true` on first `@blur` of each field                              |
 | `submitting`  | `Getter<boolean>`                | `true` while `onSubmit` is running                                            |
+| `validating`  | `Getter<boolean>`                | `true` while any async validator is in flight                                 |
 | `submitCount` | `Getter<number>`                 | Total submit attempts (incremented even on invalid submit)                    |
 | `isValid`     | `Getter<boolean>`                | `Object.keys(errors).length === 0`; reactive without microtask delay          |
 
@@ -108,7 +109,55 @@ createForm({
 
 `validate(values)` must be synchronous and return a `Partial<Record<keyof T, string>>`. An empty object means valid. To express "no error for this field", omit the key.
 
-For async validation (e.g. "is this username taken?"), run it inside `onSubmit` and throw — or mutate `form.errors` directly on the response. Async-while-typing is intentionally out of scope; it would either need debouncing built in (more magic) or surprise users with stale errors.
+## Field-level validation
+
+When you use `fieldValidators` (or pass `schema()` as `validate` — it attaches `.fields` automatically), the form runs only the validator for the touched field on blur/input, instead of validating every field:
+
+```ts
+import { createForm, validators as v } from "@sanify/core";
+
+const form = createForm({
+  initialValues: { email: "", password: "" },
+  fieldValidators: {
+    email: v.email({ required: true }),
+    password: v.string({ required: true, min: 8 }),
+  },
+  onSubmit: async (v) => { /* ... */ },
+  validateOn: "input", // only validates the field being typed in
+});
+
+// Or, more concise — schema() automatically enables field-level:
+const form = createForm({
+  initialValues: { email: "", password: "" },
+  validate: schema({ email: v.email(), password: v.string() }),
+  onSubmit: async (v) => { /* ... */ },
+  validateOn: "blur",
+});
+```
+
+On submit, the form still validates all fields at once. Field-level only affects blur/input triggers.
+
+## Async validation
+
+Per-field async validators run automatically on blur. The `validating()` signal is `true` while any are in-flight — use it to show a spinner or disable the submit button:
+
+```ts
+const form = createForm({
+  initialValues: { username: "" },
+  asyncFieldValidators: {
+    username: async (v) => {
+      const available = await api.checkUsername(v);
+      return available ? undefined : "Username already taken";
+    },
+  },
+  onSubmit: async (v) => { /* ... */ },
+});
+
+// In template:
+html`<button disabled=${() => form.validating() || form.submitting()}>Submit</button>`
+```
+
+`handleSubmit()` automatically waits for in-flight async validators before calling `onSubmit`. Throw inside an async validator is silently caught — `validating()` flips back to `false` but no error is written.
 
 ### Show errors only for touched fields
 
@@ -185,11 +234,11 @@ Runs each validator against the corresponding field; collects the first error pe
 
 Stay with `v.*` if your forms only need the rules in the table above. Use Zod/Valibot (manually plugged into `validate`) when you need:
 
-- Async validation (uniqueness, server-side check)
 - Transformations (`"5"` → `5`, trim, lowercase)
 - Unions / discriminated unions / refinements
 - Nested object schemas
 - Sharing the same schema between client and server (single source of truth)
+- Complex async workflows beyond per-field uniqueness checks (which `asyncFieldValidators` covers)
 
 ```ts
 // Manual Zod plug

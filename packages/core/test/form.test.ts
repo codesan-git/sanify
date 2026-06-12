@@ -1,8 +1,17 @@
 // test/form.test.ts — createForm: register, validate trigger, submit lifecycle
+// Plus: field-level validation, async validation
+
 import { test, expect } from "bun:test";
 import "./setup-dom.ts";
 
-const { createForm, html, render, batch } = await import("../src/index.ts");
+const {
+  createForm,
+  schema,
+  validators,
+  html,
+  render,
+  batch,
+} = await import("../src/index.ts");
 
 function mount(tr: ReturnType<typeof html>) {
   const c = document.createElement("div");
@@ -175,4 +184,178 @@ test("createForm: handleSubmit preventDefault saat dipanggil dari event form", (
   } as unknown as Event;
   form.handleSubmit(fakeEvent);
   expect(prevented).toBe(true);
+});
+
+// ── Field-level validation ────────────────────────────────────
+
+test("fieldValidators: blur hanya validasi field yang bersangkutan", () => {
+  const calls: string[] = [];
+  const form = createForm({
+    initialValues: { email: "", password: "" },
+    fieldValidators: {
+      email: () => { calls.push("email"); return undefined; },
+      password: () => { calls.push("password"); return undefined; },
+    },
+    onSubmit: () => {},
+    validateOn: "blur",
+  });
+
+  const c = mount(html`<input ${form.register("email")} />`);
+  const input = c.querySelector("input")!;
+  input.dispatchEvent(new Event("blur"));
+
+  // Hanya validator email yang dipanggil, bukan password.
+  expect(calls).toEqual(["email"]);
+});
+
+test("fieldValidators: input validasi per-field dengan validateOn 'input'", () => {
+  const calls: string[] = [];
+  const form = createForm({
+    initialValues: { name: "", age: 0 },
+    fieldValidators: {
+      name: () => { calls.push("name"); return undefined; },
+      age: () => { calls.push("age"); return undefined; },
+    },
+    onSubmit: () => {},
+    validateOn: "input",
+  });
+
+  const c = mount(html`<input ${form.register("name")} />`);
+  const input = c.querySelector("input")!;
+  input.value = "x";
+  input.dispatchEvent(new Event("input"));
+
+  expect(calls).toEqual(["name"]);
+});
+
+test("schema().fields: otomatis dipakai createForm untuk field-level", () => {
+  const sch = schema({ email: validators.email(), password: validators.string({ required: true }) });
+
+  // Properti .fields ada dan berisi per-field validator.
+  expect(sch.fields.email).toBeDefined();
+  expect(sch.fields.password).toBeDefined();
+
+  // Bisa dipakai langsung sebagai validate (backward compat).
+  const errors = sch({ email: "not-email", password: "" });
+  expect(errors.email).toBeDefined();
+  expect(errors.password).toBeDefined();
+
+  // Saat dipasang ke createForm, field-level otomatis aktif (via deteksi .fields).
+  const form = createForm({
+    initialValues: { email: "", password: "" },
+    validate: sch,
+    onSubmit: () => {},
+    validateOn: "blur",
+  });
+
+  const c = mount(html`<input ${form.register("email")} />`);
+  const input = c.querySelector("input")!;
+  form.values.email = "bad";
+  input.dispatchEvent(new Event("blur"));
+
+  // Hanya email yang error, password tidak divalidasi.
+  expect(form.errors.email).toBeDefined();
+  expect(form.errors.password).toBeUndefined();
+});
+
+// ── Async validation ─────────────────────────────────────────
+
+test("asyncFieldValidators: dipanggil saat blur, menulis error", async () => {
+  let resolve!: (v: string | undefined) => void;
+  const form = createForm({
+    initialValues: { username: "" },
+    onSubmit: () => {},
+    asyncFieldValidators: {
+      username: () => new Promise<string | undefined>((r) => (resolve = r)),
+    },
+  });
+
+  const c = mount(html`<input ${form.register("username")} />`);
+  const input = c.querySelector("input")!;
+  input.value = "taken";
+  input.dispatchEvent(new Event("blur"));
+
+  expect(form.validating()).toBe(true);
+
+  resolve("username already taken");
+  await new Promise((r) => setTimeout(r, 10));
+
+  expect(form.validating()).toBe(false);
+  expect(form.errors.username).toBe("username already taken");
+});
+
+test("asyncFieldValidators: resolving undefined menghapus error", async () => {
+  let resolve!: (v: string | undefined) => void;
+  const form = createForm({
+    initialValues: { email: "" },
+    fieldValidators: { email: () => "required" },
+    asyncFieldValidators: {
+      email: () => new Promise<string | undefined>((r) => (resolve = r)),
+    },
+    onSubmit: () => {},
+    validateOn: "blur",
+  });
+
+  const c = mount(html`<input ${form.register("email")} />`);
+  const input = c.querySelector("input")!;
+  input.dispatchEvent(new Event("blur"));
+
+  expect(form.errors.email).toBe("required");
+
+  resolve(undefined);
+  await new Promise((r) => setTimeout(r, 10));
+  expect(form.errors.email).toBeUndefined();
+});
+
+test("handleSubmit: menunggu async validation selesai sebelum submit", async () => {
+  let resolve!: (v: string | undefined) => void;
+  let submitted: unknown = null;
+
+  const form = createForm({
+    initialValues: { name: "x" },
+    asyncFieldValidators: {
+      name: () => new Promise<string | undefined>((r) => (resolve = r)),
+    },
+    onSubmit: (v) => {
+      submitted = v;
+    },
+  });
+
+  const c = mount(html`<input ${form.register("name")} />`);
+  const input = c.querySelector("input")!;
+  input.dispatchEvent(new Event("blur"));
+  expect(form.validating()).toBe(true);
+
+  let handleDone = false;
+  const p = form.handleSubmit();
+  if (p) p.then(() => {
+    handleDone = true;
+  });
+
+  await new Promise((r) => setTimeout(r, 5));
+  expect(handleDone).toBe(false);
+
+  resolve(undefined);
+  await new Promise((r) => setTimeout(r, 20));
+
+  expect(form.validating()).toBe(false);
+  expect(handleDone).toBe(true);
+  expect(submitted).toEqual({ name: "x" });
+});
+
+test("asyncFieldValidators: throw di validator tidak blocking, validating tetap false", async () => {
+  const form = createForm({
+    initialValues: { x: "" },
+    asyncFieldValidators: {
+      x: () => Promise.reject(new Error("boom")),
+    },
+    onSubmit: () => {},
+  });
+
+  const c = mount(html`<input ${form.register("x")} />`);
+  const input = c.querySelector("input")!;
+  input.dispatchEvent(new Event("blur"));
+
+  await new Promise((r) => setTimeout(r, 10));
+  expect(form.validating()).toBe(false);
 });

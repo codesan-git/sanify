@@ -109,12 +109,14 @@ node DOM), **tanpa virtual DOM** dan **tanpa diffing global**.
 
 ## Utang teknis yang DISENGAJA (jangan dianggap bug)
 
-1. **Keyed list diffing** belum ada — list dirender ulang penuh saat berubah.
-   Benar secara hasil, hanya belum optimal untuk list besar.
+1. **Keyed list diffing** — `For` telah punya keyed reconciliation sejak v0.4.0.
+   Item dengan key yang sama di-reuse (DOM dipertahankan, nilai di-update).
+   Non-keyed list tetap dirender ulang penuh.
 2. **Parser template berbasis heuristik** (`compile` di `template.ts`), bukan
    parser HTML penuh. Edge case markup tertentu bisa keliru. Kalau memperbaiki,
    tambah test, jangan ganti total tanpa diskusi.
-3. **Nested routes** & param reaktif pada route yang sama belum didukung.
+3. **TransitionGroup reorder** belum ada FLIP animation — item dipindah di
+   DOM dengan benar, tapi tanpa animasi posisi. Enter/leave sudah jalan.
 4. **Reconnect komponen** membangun ulang state dari nol (tidak mempertahankan
    state lama). Aman untuk mayoritas app.
 
