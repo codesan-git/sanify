@@ -1,5 +1,89 @@
 # Changelog
 
+## [0.5.3] — 2026-06-17
+
+### Added
+
+- **Warning signal dibaca di setup**: signal getter kini mendeteksi bila dibaca
+  di dalam `component()` setup (di luar effect/view). `console.warn` kasih tahu
+  user bahwa nilai cuma kebaca sekali — harus dipindah ke view function.
+- **Validasi template compile**: `compile()` kini cek recipeIndex out-of-bounds +
+  mismatch jumlah hole vs binding. Cegah cryptic error saat runtime karena
+  template literal yang salah tulis.
+- **Global `onError(fn)` hook**: daftarkan handler untuk error yang lolos dari
+  semua ErrorBoundary. Otomatis menangkap `window.onerror` dan
+  `unhandledrejection`. Return dispose function.
+- **TransitionGroup FLIP animation**: item yang di-reorder kini dianimasikan
+  posisinya dengan teknik FLIP (First-Last-Invert-Play). Transform position
+  dihitung otomatis, dianimasikan dengan durasi yang sama seperti enter/leave.
+  Dihormati `prefers-reduced-motion`.
+
+### Changed
+
+- **Router: per-instance params** — `ctx.params` sekarang pakai compiled routes
+  milik router sendiri, bukan global `activeFlat`. Global `params()` tetap ada
+  untuk backward-compat (pakai compiled dari router terakhir).
+- **TextNode in-place update** — binding reaktif ke nilai primitif kini update
+  `nodeValue` TextNode yang sudah ada tanpa bongkar DOM.
+- **`files` npm**: `src` tidak lagi di-publish ke npm (hanya `dist`). Ukuran
+  package mengecil; Bun `--target=browser` tetap resolusi ke `dist/index.js`.
+
+### Removed
+
+- `template.ts.tmp` — file sisa editan.
+
+### Fixed
+
+- Pisah `build` (JS only) dan `typecheck` (tsc --noEmit) di package.json, biar
+  type error gak nge-block JS build.
+- Tambah `_note_exports` dan `_note_setup_vs_view` di package.json — dokumentasi
+  Bun resolve dist vs src dan pola setup vs view.
+
+---
+
+## [0.5.2] — 2026-06-17
+
+### Removed
+
+- Global mount cache (`mountCache`, `clearMountCache`, `COMPONENT_TAG_KEY`,
+  `setComponentTag`) — menyebabkan `onMount` hanya jalan sekali selamanya.
+  Kembali ke perilaku semula: `onMount` jalan tiap kali komponen mount.
+
+### Changed
+
+**create-sanify**
+- Template dependency `@sanify/core` dinaikkan dari `^0.5.1` ke `^0.5.2`.
+  `create-sanify` sendiri bump ke `0.1.4`.
+
+---
+
+## [0.5.1] — 2026-06-17
+
+### Changed
+
+**Template — skip re-render untuk compiled template yang sama**
+- Binding reaktif generik di `bindChild` kini membandingkan `strings` reference
+  TemplateResult saat ini dengan render sebelumnya. Bila sama, clearRange + render
+  ulang di-skip — binding fine-grained yang sudah terpasang tetap jalan dan
+  meng-update DOM in-place. Custom element yang sudah mount tidak dihancurkan.
+
+**Router — memoize `level()` per depth**
+- `level(depth)` kini mengembalikan getter yang sama untuk depth yang sama.
+  `computed`, `resource`, dan `RouteContext` dibuat sekali; mencegah duplikasi
+  subscription dan alokasi objek tiap kali `outlet` dipanggil.
+
+**Component — effect wrapper di `doMount`**
+- `doMount()` kini membungkus `render(view(), this)` dalam `effect()`. Setiap kali
+  signal yang di-track oleh `view()` berubah, komponen re-render otomatis (DOM
+  dibersihkan lalu di-render ulang). Child owner sebelumnya di-dispose sebelum
+  render baru untuk mencegah kebocoran.
+
+**create-sanify**
+- Template dependency `@sanify/core` dinaikkan dari `^0.5.0` ke `^0.5.1`.
+  `create-sanify` sendiri bump ke `0.1.3`.
+
+---
+
 ## [0.5.0] — 2026-06-12
 
 ### Added

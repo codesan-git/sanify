@@ -52,6 +52,13 @@ function schedule(effect: Effect): void {
 }
 
 // ── Signal ──────────────────────────────────────────────────
+// Flag: sedang di dalam setup komponen (set oleh component.ts).
+// Dipakai untuk warning: signal dibaca di setup tanpa observer.
+let inComponentSetup = false;
+
+export function enterComponentSetup(): void { inComponentSetup = true; }
+export function exitComponentSetup(): void { inComponentSetup = false; }
+
 export function signal<T>(initial: T): [Getter<T>, Setter<T>] {
   if (debugEnabled) signalsCreated++;
   let value = initial;
@@ -61,6 +68,11 @@ export function signal<T>(initial: T): [Getter<T>, Setter<T>] {
     if (currentObserver) {
       subscribers.add(currentObserver);
       currentObserver.deps.add(subscribers);
+    } else if (inComponentSetup) {
+      console.warn(
+        "sanify: signal dibaca langsung di setup() — nilai hanya kebaca sekali, tidak reaktif. " +
+        "Pindahkan pembacaan ke dalam view function (return value setup).",
+      );
     }
     return value;
   };
@@ -275,13 +287,34 @@ export function useContext<T>(ctx: Context<T>): T {
 }
 
 // Cari errorHandler terdekat di rantai owner (dipakai ErrorBoundary).
+// Bila tidak ditemukan, fallback ke global handler yang didaftarkan via onError().
 export function findErrorHandler(start: Owner | null): ((err: unknown) => void) | null {
   let owner = start;
   while (owner) {
     if (owner.errorHandler) return owner.errorHandler;
     owner = owner.parent;
   }
-  return null;
+  return _globalErrorHandler;
+}
+
+// ── Global error handler ────────────────────────────────────
+// Fallback saat error lolos dari semua ErrorBoundary.
+let _globalErrorHandler: ((err: unknown) => void) | null = null;
+
+export function onError(handler: (err: unknown) => void): () => void {
+  _globalErrorHandler = handler;
+  return () => {
+    if (_globalErrorHandler === handler) _globalErrorHandler = null;
+  };
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (e) => {
+    _globalErrorHandler?.(e.error ?? e);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    _globalErrorHandler?.(e.reason);
+  });
 }
 
 // ── Suspense state (dipakai Suspense + resource) ───────────────

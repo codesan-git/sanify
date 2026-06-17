@@ -3,7 +3,7 @@
 // tag menukar setup dan me-remount instance hidup (custom element tak bisa
 // di-redefine, jadi indirection ini wajib).
 
-import { createOwner, runWithOwner, signal, findErrorHandler, type Getter, type Setter } from "../reactivity/signal.ts";
+import { createOwner, runWithOwner, signal, effect, findErrorHandler, enterComponentSetup, exitComponentSetup, type Owner, type Getter, type Setter } from "../reactivity/signal.ts";
 import { render, type TemplateResult } from "./template.ts";
 
 export interface ComponentContext<P> {
@@ -77,6 +77,14 @@ const registries = new Map<string, Registry>();
 
 export function component<P = Record<string, never>>(
   tag: string,
+  // Setup = jalan SEKALI saat mount. Tempat bikin signal/effect/resource/onCleanup.
+  // Return-nya adalah VIEW function — jalan tiap re-render, di sinilah signal
+  // tracking aktif. Baca signal di view, bukan di setup.
+  //
+  //   component("x-counter", () => {
+  //     const [n, setN] = signal(0);         // ← setup: bikin signal
+  //     return () => html`<p>${n}</p>`;      // ← view: baca signal (reaktif)
+  //   });
   setup: SetupFn<P>,
   options: ComponentOptions<P> = {},
 ): void {
@@ -159,8 +167,25 @@ export function component<P = Record<string, never>>(
       }
       try {
         runWithOwner(this.owner, () => {
-          const view = reg.setup({ props, el: this });
-          render(view(), this);
+          // Flag inComponentSetup diaktifkan agar signal.get() bisa kasih warning
+          // bila user membaca signal langsung di setup (bukan di view function).
+          const view = (() => {
+            enterComponentSetup();
+            try {
+              return reg.setup({ props, el: this });
+            } finally {
+              exitComponentSetup();
+            }
+          })();
+          let childOwner: Owner | null = null;
+          effect(() => {
+            childOwner?.dispose();
+            while (this.firstChild) this.removeChild(this.firstChild);
+            childOwner = createOwner();
+            runWithOwner(childOwner, () => {
+              render(view(), this);
+            });
+          });
         });
       } catch (err) {
         // Error saat mount diteruskan ke ErrorBoundary terdekat (lewat rantai

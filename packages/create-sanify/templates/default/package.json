@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sanify/core": "^0.5.0"
+    "@sanify/core": "^0.5.3"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

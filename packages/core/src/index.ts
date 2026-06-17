@@ -9,6 +9,7 @@ export {
   on,
   onCleanup,
   onMount,
+  onError,
   createRoot,
   createOwner,
   runWithOwner,

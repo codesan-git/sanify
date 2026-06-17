@@ -134,7 +134,9 @@ const getSearch = _search[0];
 const setSearch = _search[1];
 
 // Pattern flat dari router() terakhir, dipakai params() global.
-let activeFlat: CompiledRoute[] = [];
+// Tiap router() kini menyimpan compiled-nya sendiri untuk ctx.params;
+// variabel ini hanya untuk backward-compat params() standalone.
+let activeCompiled: CompiledRoute[] = [];
 
 // Diaktifkan via router(routes, { scrollRestoration: true }). Saat true:
 // - sebelum navigate, posisi scroll disimpan ke history.state entry sekarang;
@@ -159,8 +161,8 @@ function restoreScroll(): void {
 
 export { current };
 
-function matchParams(path: string): RouteParams {
-  for (const r of activeFlat) {
+function matchPatterns(path: string, compiled: CompiledRoute[]): RouteParams {
+  for (const r of compiled) {
     const m = r.pattern.exec(path);
     if (m) {
       const params: RouteParams = {};
@@ -172,8 +174,9 @@ function matchParams(path: string): RouteParams {
 }
 
 // Param route aktif (`:id`), reaktif terhadap perubahan path.
+// Untuk backward-compat: pakai compiled dari router() terakhir.
 export function params(): RouteParams {
-  return matchParams(current());
+  return matchPatterns(current(), activeCompiled);
 }
 
 // Query string (`?a=1`) sebagai URLSearchParams, reaktif.
@@ -260,7 +263,12 @@ export function router(
 ): Getter<TemplateResult> {
   const compiled: CompiledRoute[] = [];
   compileRoutes(routes, "", [], compiled);
-  activeFlat = compiled;
+  // backward compat: params() global pakai compiled dari router terakhir
+  activeCompiled = compiled;
+
+  // Per-instance params — selalu pakai compiled router ini,
+  // jadi multi-router app tidak bentrok.
+  const myParams = (): RouteParams => matchPatterns(current(), compiled);
 
   if (options.scrollRestoration && hasWindow) {
     scrollRestoreEnabled = true;
@@ -302,53 +310,62 @@ export function router(
     }
   });
 
-  // Tiap level = boundary reaktif sendiri. nodeAt(depth) ref-stabil → level induk
-  // TIDAK re-render saat hanya level anak yang berubah (layout bertahan).
-  function level(depth: number): Getter<TemplateResult> {
-    const nodeAt = computed<RouteNode | null>(() => {
-      const m = match();
-      return m && "chain" in m ? (m.chain[depth] ?? null) : null;
-    });
+	// Tiap level = boundary reaktif sendiri. nodeAt(depth) ref-stabil → level induk
+	// TIDAK re-render saat hanya level anak yang berubah (layout bertahan).
+	// level() di-memoize: depth yang sama selalu mengembalikan getter yang sama,
+	// sehingga computed + resource tidak dibuat ulang tiap kali `outlet` dipanggil.
+	const _levels = new Map<number, Getter<TemplateResult>>();
+	function level(depth: number): Getter<TemplateResult> {
+	  const cached = _levels.get(depth);
+	  if (cached) return cached;
 
-    // Resource per level dibuat eager di scope router(), bukan di scope render,
-    // supaya hidup tahan ganti-render dari konsumen (childOwner render di-dispose
-    // tiap kali re-render). Konsekuensi: useSuspense() tidak otomatis menemukan
-    // boundary yang dipasang konsumen — kalau butuh fallback selama loader
-    // berjalan, panggil resource() sendiri di dalam komponen.
-    const res = resource<unknown>(
-      async () => {
-        const n = nodeAt();
-        if (!n?.loader) return undefined;
-        return await n.loader(params());
-      },
-      {
-        // Key: identitas node + params. layoutNode ref-shared antar child →
-        // key stabil saat hanya child berubah; param berubah → refetch.
-        key: () => {
-          const n = nodeAt();
-          if (!n?.loader) return undefined;
-          return `${nodeId(n)}:${JSON.stringify(params())}`;
-        },
-      },
-    );
+	  const nodeAt = computed<RouteNode | null>(() => {
+	    const m = match();
+	    return m && "chain" in m ? (m.chain[depth] ?? null) : null;
+	  });
 
-    const ctx: RouteContext = {
-      params,
-      outlet: () => level(depth + 1)(),
-      data: res.data,
-    };
+	  // Resource per level dibuat eager di scope router(), bukan di scope render,
+	  // supaya hidup tahan ganti-render dari konsumen (childOwner render di-dispose
+	  // tiap kali re-render). Konsekuensi: useSuspense() tidak otomatis menemukan
+	  // boundary yang dipasang konsumen — kalau butuh fallback selama loader
+	  // berjalan, panggil resource() sendiri di dalam komponen.
+	  const res = resource<unknown>(
+	    async () => {
+	      const n = nodeAt();
+	      if (!n?.loader) return undefined;
+	      return await n.loader(myParams());
+	    },
+	    {
+	      // Key: identitas node + params. layoutNode ref-shared antar child →
+	      // key stabil saat hanya child berubah; param berubah → refetch.
+	      key: () => {
+	        const n = nodeAt();
+	        if (!n?.loader) return undefined;
+	        return `${nodeId(n)}:${JSON.stringify(myParams())}`;
+	      },
+	    },
+	  );
 
-    return () => {
-      const node = nodeAt();
-      if (node) return node.render(ctx);
-      if (depth === 0) {
-        const m = match();
-        if (m && "redirect" in m) return html``; // sedang redirect → kosong
-        return fallback ? fallback(ctx) : html`<div>404</div>`;
-      }
-      return html``;
-    };
-  }
+	  const ctx: RouteContext = {
+	    params: myParams,
+	    outlet: () => level(depth + 1)(),
+	    data: res.data,
+	  };
 
-  return level(0);
+	  const getter = (): TemplateResult => {
+	    const node = nodeAt();
+	    if (node) return node.render(ctx);
+	    if (depth === 0) {
+	      const m = match();
+	      if (m && "redirect" in m) return html``; // sedang redirect → kosong
+	      return fallback ? fallback(ctx) : html`<div>404</div>`;
+	    }
+	    return html``;
+	  };
+
+	  _levels.set(depth, getter);
+	  return getter;
+	}
+
+	return level(0);
 }

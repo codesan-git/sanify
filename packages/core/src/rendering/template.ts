@@ -283,9 +283,31 @@ function compile(strings: TemplateStringsArray): CompiledTemplate {
     }
   }
 
-  const compiled: CompiledTemplate = { template, parts, recipes };
-  cache.set(strings, compiled);
-  return compiled;
+	  const compiled: CompiledTemplate = { template, parts, recipes };
+
+	  // Validasi: pastikan semua indeks referensi valid. Cegah cryptic error
+	  // saat runtime (mis. recipeIndex out of bounds karena bug parser).
+	  // Cek ini murah — cuma sekali per template literal (di-cache).
+	  for (const p of parts) {
+	    if (p.type === "attr" && p.recipeIndex !== undefined) {
+	      if (p.recipeIndex < 0 || p.recipeIndex >= recipes.length) {
+	        console.warn(
+	          `sanify template: recipeIndex ${p.recipeIndex} out of bounds (recipes: ${recipes.length}). ` +
+	          "Kemungkinan bug parser — periksa penulisan template literal.",
+	        );
+	      }
+	    }
+	  }
+	  const holeCount = strings.length - 1;
+	  if (parts.length !== holeCount) {
+	    console.warn(
+	      `sanify template: terdeteksi ${parts.length} binding dari ${holeCount} hole. ` +
+	      "Mungkin ada hole di posisi yang tidak didukung (mis. nama tag, isi <style>/<script>).",
+	    );
+	  }
+
+	  cache.set(strings, compiled);
+	  return compiled;
 }
 
 function resolveNodes(root: DocumentFragment): Node[] {
@@ -768,16 +790,72 @@ function bindTransitionGroup(
       }
     }
 
-    let anchor: Node = end;
-    for (let i = keys.length - 1; i >= 0; i--) {
-      const row = next.get(keys[i]!);
-      if (row && row.end.nextSibling !== anchor) {
-        moveRange(row.start, row.end, anchor);
-      }
-      if (row) anchor = row.start;
-    }
+	    // ── Reorder dengan FLIP animation ──
+	    // 1. Rekam posisi elemen yang akan dipindah (First).
+	    const flips: { el: Element; prevLeft: number; prevTop: number }[] = [];
+	    if (!skipAnim) {
+	      let a: Node = end;
+	      for (let i = keys.length - 1; i >= 0; i--) {
+	        const row = next.get(keys[i]!);
+	        if (row && row.end.nextSibling !== a) {
+	          for (const el of collectElements(row.start, row.end)) {
+	            const r = el.getBoundingClientRect();
+	            flips.push({ el, prevLeft: r.left, prevTop: r.top });
+	          }
+	        }
+	        if (row) a = row.start;
+	      }
+	    }
 
-    rows = next;
+	    // 2. Pindahkan DOM ke posisi baru (Last).
+	    let anchor: Node = end;
+	    for (let i = keys.length - 1; i >= 0; i--) {
+	      const row = next.get(keys[i]!);
+	      if (row && row.end.nextSibling !== anchor) {
+	        moveRange(row.start, row.end, anchor);
+	      }
+	      if (row) anchor = row.start;
+	    }
+
+	    // 3. FLIP: hitung delta, pasang inverse transform, animate ke identity (Invert + Play).
+	    if (flips.length > 0) {
+	      // Hitung delta posisi setelah DOM dipindah
+	      const withDelta: { el: Element; dx: number; dy: number }[] = [];
+	      for (const f of flips) {
+	        const r = f.el.getBoundingClientRect();
+	        const dx = f.prevLeft - r.left;
+	        const dy = f.prevTop - r.top;
+	        if (dx !== 0 || dy !== 0) withDelta.push({ el: f.el, dx, dy });
+	      }
+	      // Pasang inverse transform (no transition) — elemen tampak di posisi lama
+	      for (const w of withDelta) {
+	        const s = (w.el as HTMLElement).style;
+	        s.transition = "none";
+	        s.transform = `translate(${w.dx}px, ${w.dy}px)`;
+	      }
+	      // Force reflow agar browser apply transform sebelum animasi
+	      if (withDelta.length) withDelta[0]!.el.getBoundingClientRect();
+	      // Animasikan ke identity
+	      for (const w of withDelta) {
+	        const s = (w.el as HTMLElement).style;
+	        s.transition = `transform ${duration}ms`;
+	        s.transform = "";
+	      }
+	      // Bersihkan inline style setelah animasi selesai
+	      if (withDelta.length) {
+	        setTimeout(() => {
+	          for (const w of withDelta) {
+	            const s = (w.el as HTMLElement).style;
+	            if (s.transition === `transform ${duration}ms`) s.transition = "";
+	            if (s.transform === "") s.transform = ""; // no-op, jaga dari race condition
+	            s.removeProperty("transition");
+	            s.removeProperty("transform");
+	          }
+	        }, duration + 10);
+	      }
+	    }
+
+	    rows = next;
   });
 }
 
@@ -897,17 +975,41 @@ function bindChild(start: Comment, end: Comment, value: unknown): void {
     });
     return;
   }
-  if (!isReactive(value)) {
-    insertValue(value, end);
-    return;
-  }
-  let childOwner: Owner | null = null;
-  effect(() => {
-    childOwner?.dispose();
-    clearRange(start, end);
-    childOwner = createOwner();
-    runWithOwner(childOwner, () => insertValue(value(), end));
-  });
+	  if (!isReactive(value)) {
+	    insertValue(value, end);
+	    return;
+	  }
+	  // Reaktivitas generik: getter yang mengembalikan TemplateResult atau nilai lain.
+	  // Optimasi 1: bila getter mengembalikan TemplateResult dengan strings yang sama
+	  // seperti render sebelumnya, binding fine-grained yang sudah terpasang akan
+	  // meng-update sendiri — kita skip clearRange + render ulang.
+	  // Optimasi 2: nilai primitif (string/number/boolean) di-update in-place
+	  // pada TextNode yang sama — tanpa dispose owner & tanpa bongkar DOM.
+	  // childOwner DIDISPOSE manual di awal tiap run (bukan via cleanup effect)
+	  // supaya saat skip, childOwner tetap hidup dan inner effects tetap jalan.
+	  let prevStrings: TemplateStringsArray | null = null;
+	  let childOwner: Owner | null = null;
+	  effect(() => {
+	    const val = value();
+	    if (isTemplateResult(val) && val.strings === prevStrings) {
+	      return;
+	    }
+	    // Nilai primitif + TextNode sudah ada di posisi yang tepat → update in-place.
+	    if (typeof val === "string" || typeof val === "number") {
+	      const prev = end.previousSibling;
+	      if (prev && prev.nodeType === Node.TEXT_NODE && prev !== start) {
+	        prev.nodeValue = String(val);
+	        prevStrings = null;
+	        return;
+	      }
+	    }
+	    prevStrings = isTemplateResult(val) ? val.strings : null;
+	    childOwner?.dispose();
+	    clearRange(start, end);
+	    childOwner = createOwner();
+	    runWithOwner(childOwner, () => insertValue(val, end));
+	  });
+	  onCleanup(() => childOwner?.dispose());
 }
 
 interface Row {

@@ -1,6 +1,6 @@
 {
   "name": "@sanify/core",
-  "version": "0.5.0",
+  "version": "0.5.3",
   "description": "Sanify Frontend core — fine-grained reactivity, Web Components, store, router, resource, forms. CSR-only, ~10 KB gzip, no virtual DOM",
   "type": "module",
   "license": "MIT",
@@ -15,8 +15,9 @@
   "bugs": {
     "url": "https://github.com/codesan-git/sanify/issues"
   },
-  "files": ["dist", "src"],
+  "files": ["dist"],
   "types": "./dist/index.d.ts",
+  "_note_exports": "Bun resolve: '--target=browser' pakai 'import' → dist/index.js, bukan src/index.ts. Setiap ubah source, jalankan 'bun run build' dulu agar dist tersinkron. '--target=bun' (server/dev) langsung baca src/index.ts via condition 'bun'.",
   "exports": {
     ".": {
       "bun": "./src/index.ts",
@@ -25,10 +26,13 @@
       "default": "./dist/index.js"
     }
   },
+  "_note_setup_vs_view": "Setup function di component() jalan SEKALI — tempat bikin signal/effect/resource. Return value-nya adalah VIEW function yang jalan tiap re-render — hanya di sinilah signal tracking aktif. Jangan baca signal langsung di setup (nilainya cuma kebaca sekali, tidak reaktif).",
   "scripts": {
-    "build": "rm -rf dist && bun build ./src/index.ts --outdir ./dist --format esm --packages external && tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && bun build ./src/index.ts --outdir ./dist --format esm --packages external",
+    "build:types": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "test": "bun test",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build && bun run build:types"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "latest"
