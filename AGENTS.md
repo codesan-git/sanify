@@ -1,4 +1,4 @@
-# CLAUDE.md — Panduan untuk AI yang bekerja di proyek ini
+# AGENTS.md — Panduan untuk AI yang bekerja di proyek ini
 
 Proyek ini adalah **Sanify Frontend** (`sanify`): framework frontend
 fine-grained berbasis Web Components. Dokumen ini menjelaskan arsitektur,
@@ -64,12 +64,46 @@ node DOM), **tanpa virtual DOM** dan **tanpa diffing global**.
 - **Binding reaktif HARUS berupa fungsi**: tulis `${() => count()}`, BUKAN
   `${count()}`. Yang kedua dievaluasi sekali lalu kehilangan reaktivitas.
   Deteksi reaktivitas di `template.ts` berbasis `typeof value === "function"`.
+  Mulai v0.5.3, framework kasih `console.warn` bila signal dibaca di setup
+  tanpa observer (dibaca di luar effect/view function).
 - `name=${...}` → set **atribut** (selalu string).
 - `.name=${...}` → set **property** (untuk objek/number/boolean ke komponen anak).
 - `@event=${handler}` → pasang **event listener** (dipasang sekali, tidak dibungkus effect).
 - Atribut yang diobservasi butuh konverter eksplisit:
   `component(tag, setup, { attrs: { count: (raw) => Number(raw) } })`.
 - Props non-string (objek/array) lewat `props: [...]` + sintaks `.prop=${...}`.
+
+## Pola setup vs view (rawan bug nomor 2)
+
+Setup function di `component(tag, setup)` jalan **SEKALI** saat mount. Signal
+YANG DIBACA di setup nilainya statis — tidak reaktif. Mulai v0.5.3, getter
+signal kasih `console.warn` kalau dibaca di setup tanpa observer aktif.
+
+```typescript
+// ❌ Salah — signal dibaca di setup, nilainya cuma kebaca sekali
+component("x-page", () => {
+  const id = params().id;  // dibaca di setup, gak reaktif
+  return () => html`<p>${id}</p>`;
+});
+
+// ✅ Benar — signal dibaca di view function, reaktif
+component("x-page", () => {
+  return () => {
+    const id = params().id; // dibaca di view, reaktif
+    return html`<p>${id}</p>`;
+  };
+});
+```
+
+## Bun resolve: `dist` vs `src`
+
+Package exports punya dua entry point:
+- `"bun": "./src/index.ts"` — dipakai Bun saat `--target=bun` (server/dev)
+- `"import": "./dist/index.js"` — dipakai Bun saat `--target=browser`
+
+**`--target=browser` baca `dist/index.js`, BUKAN `src/index.ts`.** Setiap ubah
+source, WAJIB `bun run build` dulu agar `dist/` tersinkron. Source TS di
+`node_modules` TIDAK di-include sejak v0.5.3 (`"files": ["dist"]` saja).
 
 ## Lifecycle & kebocoran memori (rawan)
 
@@ -115,9 +149,9 @@ node DOM), **tanpa virtual DOM** dan **tanpa diffing global**.
 2. **Parser template berbasis heuristik** (`compile` di `template.ts`), bukan
    parser HTML penuh. Edge case markup tertentu bisa keliru. Kalau memperbaiki,
    tambah test, jangan ganti total tanpa diskusi.
-3. **TransitionGroup reorder** belum ada FLIP animation — item dipindah di
-   DOM dengan benar, tapi tanpa animasi posisi. Enter/leave sudah jalan.
-4. **Reconnect komponen** membangun ulang state dari nol (tidak mempertahankan
+   Sejak v0.5.3, `compile()` punya validasi dasar (recipeIndex out-of-bounds,
+   mismatch hole count) untuk cegah cryptic error.
+3. **Reconnect komponen** membangun ulang state dari nol (tidak mempertahankan
    state lama). Aman untuk mayoritas app.
 
 ## Konteks brand
