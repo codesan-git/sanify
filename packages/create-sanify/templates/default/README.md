@@ -16,7 +16,7 @@ bun install
 
 | Command | Purpose |
 | --- | --- |
-| `bun dev` | Dev server at http://localhost:3000 with **HMR** |
+| `bun dev` | Dev server at http://localhost:54712 with **HMR** |
 | `bun run build` | Production bundle into `dist/` |
 | `bun run typecheck` | TypeScript type check |
 
@@ -26,27 +26,24 @@ bun install
 src/
   main.ts            entry: loads app-root
   app.ts             root + router (including nested routes + outlet)
-  state/             todos (persisted), settings (nested createStore)
   data/              sample data + simulated async fetch
-  components/        nav-bar, users-sidebar, todo-item, live-clock
-  pages/             home, todos, settings, user-list, user-detail, about
+  components/        nav-bar
+  pages/             home, demo
 index.html           host page, loads the bundled main.js
-dev-server.ts        Bun dev server with HMR + automatic bundling
+dev-server.ts        Bun dev server with HMR + static file serving
 ```
 
 ## Showcased features
 
 | Page | Sanify features |
 | --- | --- |
-| Home | `signal`, `onMount`/`onCleanup` (live-clock) |
-| Todos | `For` (keyed list), `persisted` + cross-tab, `computed` |
-| Settings | `createStore` fine-grained nested object (update by path) |
-| Users | **nested router + outlet** (persistent layout), reactive `params()`, `resource` (async fetch) |
-| About | reactive `query()` |
+| Home | `signal`, `router`, nested routes, `params()`, `For` (keyed list) |
+| Demo | `signal`, `computed`, `onMount`, `resource` (async fetch) |
+
+## Styling
+
+Template uses semantic CSS classes (`.card`, `.btn`, `.stack`, `.cluster`, etc.) defined in `src/style.css` and CSS custom properties in `src/theme.css`. No build step needed for CSS — just edit and refresh.
 
 ## HMR
 
-`bun dev` supports Hot Module Replacement. Edit a component file → the UI updates
-without a reload, and global state (`persisted`/`createStore`) is preserved.
-Local state inside `setup` (e.g. a signal) resets on hot-remount. Each component
-file ends with `if (import.meta.hot) import.meta.hot.accept();`.
+`bun dev` supports Hot Module Replacement. Edit a component file → the UI updates without a reload.

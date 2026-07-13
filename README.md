@@ -4,9 +4,9 @@
 [![bundle size](https://img.shields.io/bundlephobia/minzip/@sanify/core?label=min%2Bgzip&color=fb923c)](https://bundlephobia.com/package/@sanify/core)
 [![license](https://img.shields.io/npm/l/@sanify/core?color=fb923c)](./LICENSE)
 
-A fine-grained frontend framework built on native Web Components. Solid-style signals, Light DOM (Tailwind-friendly), no virtual DOM, no global diffing — **~10 KB gzipped**, **CSR-only by design**.
+A fine-grained frontend framework built on native Web Components. Solid-style signals, Light DOM, no virtual DOM, no global diffing — **~10 KB gzipped**, **CSR-only by design**.
 
-> Built to scratch a specific itch: Solid-style fine-grained reactivity on top of native Web Components, with Light DOM so Tailwind just works, no virtual DOM, no build step required. It's everything I'd actually use to ship a small SPA fast — signals, store, router, resource, mutation, HTTP client, forms — wrapped in ~10 KB. Not trying to replace anything; just what I reach for personally.
+> Built to scratch a specific itch: Solid-style fine-grained reactivity on top of native Web Components, with Light DOM so any CSS just works, no virtual DOM, no build step required. It's everything I'd actually use to ship a small SPA fast — signals, store, router, resource, mutation, HTTP client, forms, WebSocket — wrapped in ~10 KB. Not trying to replace anything; just what I reach for personally.
 
 Created by Satria Agung Nugraha ([@codesan-git](https://github.com/codesan-git)).
 
@@ -35,7 +35,7 @@ That's the whole programming model.
 | --- | --- |
 | Fine-grained signals | One binding = one tiny effect on one node. No diffing, no reconciliation overhead |
 | Native Web Components | The framework's "component" is just `customElements.define` with extras — works with any other framework, any router, any test runner |
-| Light DOM | Global CSS (Tailwind, design tokens) works out of the box; no Shadow DOM plumbing |
+| Light DOM | Global CSS (design tokens, utility classes) works out of the box; no Shadow DOM plumbing |
 | Tagged template literals (`html\`...\``) | Zero build step required; templates compile **once** per literal at runtime and are cached forever |
 | No virtual DOM | Updates touch exactly the node that changed |
 | **CSR-only by design** | No SSR, no hydration, no streaming. Keeps the runtime small and focused on apps/dashboards. See [out-of-scope below](#out-of-scope-ssr) |

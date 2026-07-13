@@ -39,17 +39,18 @@ Quick start a project: `bun create sanify my-app`.
 
 | Group | Exports |
 | --- | --- |
-| **Reactivity** | `signal`, `effect`, `computed`, `batch`, `untrack`, `on`, `onCleanup`, `onMount`, `createRoot`, `createOwner`, `runWithOwner`, `Owner` |
+| **Reactivity** | `signal`, `effect`, `computed`, `batch`, `untrack`, `on`, `onCleanup`, `onMount`, `onError`, `createRoot`, `createOwner`, `runWithOwner`, `Owner` |
 | **Helpers** | `createSelector`, `debounced`, `throttled` |
 | **Context** | `createContext`, `useContext`, `provide` |
-| **Template** | `html`, `render`, `For` (keyed list with DOM reuse), `TransitionGroup` (animated list) |
+| **Template** | `html`, `render`, `For` (keyed list with DOM reuse), `TransitionGroup` (animated list with FLIP) |
 | **Control-flow** | `Show`, `Switch`/`Match`, `Index`, `Dynamic`, `Transition` (enter/leave CSS), `TransitionGroup` (list animation), `Portal`, `ErrorBoundary`, `Suspense` |
 | **Component** | `component` (Web Component + HMR + reconnect-tolerant) |
 | **Store** | `createStore` + `produce` (Proxy-backed nested, fine-grained per leaf), `persisted` (localStorage + cross-tab sync) |
 | **Form** | `createForm` (field-level + async validation), `schema`, `validators` (`v.string`, `v.email`, `v.number`, `v.boolean`, `v.custom`) |
-| **Router** | `router` (nested, layout, guard, loader, scroll restoration), `lazy`, `navigate`, `redirect`, `back`, `forward`, `current`, `params`, `query` |
-| **Resource (read)** | `resource` (reactive fetch + cache + dedupe + SWR + AbortController + GC), `invalidate`, `setResourceData`, `getResourceData` |
+| **Router** | `router` (nested, layout, guard, loader, scroll restoration, hash nav), `lazy`, `navigate`, `redirect`, `back`, `forward`, `current`, `params`, `query` |
+| **Resource (read)** | `resource` (reactive fetch + cache + dedupe + SWR + polling + retry + AbortController + GC), `invalidate`, `setResourceData`, `getResourceData` |
 | **Resource (write)** | `mutation` (loading/error/data + auto-invalidate) |
+| **WebSocket** | `createWS` (reactive WS + auto-reconnect + JSON parse + cleanup) |
 | **HTTP client** | `createClient` (baseUrl + headers + before/after interceptors), `HttpError` |
 | **Devtools** | `__debug` (opt-in: stats + owner tree, exposed on `globalThis.__sanify_debug`) |
 
