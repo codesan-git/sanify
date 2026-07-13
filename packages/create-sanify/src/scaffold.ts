@@ -40,10 +40,11 @@ const TAILWIND_SRC_CSS = `@import "tailwindcss";
 `;
 
 // Pengganti dev-server.ts: spawn Tailwind CLI watcher di samping Bun server.
-const DEV_SERVER_TAILWIND = `// dev-server.ts — dev server Bun dengan HMR + Tailwind watcher
+const DEV_SERVER_TAILWIND = `// dev-server.ts — Dev server Bun: HMR, SPA fallback, Tailwind watcher
 
 import { spawn } from "node:child_process";
-import index from "./index.html";
+
+const PORT = 54712;
 
 // Spawn Tailwind watcher — recompile src/tailwind.src.css → src/tailwind.css
 const tw = spawn(
@@ -52,15 +53,43 @@ const tw = spawn(
   { stdio: "inherit" },
 );
 
+const MIME: Record<string, string> = {
+  ".css": "text/css",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".woff2": "font/woff2",
+};
+
+async function serveStatic(path: string): Promise<Response | null> {
+  const file = Bun.file("." + path);
+  if (!(await file.exists())) return null;
+  const ext = path.slice(path.lastIndexOf("."));
+  const headers: Record<string, string> = {};
+  if (MIME[ext]) headers["Content-Type"] = MIME[ext];
+  return new Response(file, { headers });
+}
+
 const server = Bun.serve({
-  port: 54712,
+  port: PORT,
   development: { hmr: true, console: true },
-  routes: {
-    "/*": index, // SPA: semua route → index.html
+
+  async fetch(req) {
+    const url = new URL(req.url);
+    if (url.pathname !== "/" && url.pathname.includes(".")) {
+      const res = await serveStatic(url.pathname);
+      if (res) return res;
+    }
+    const html = Bun.file("./index.html");
+    if (!(await html.exists())) {
+      return new Response("index.html not found", { status: 500 });
+    }
+    return new Response(html, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
   },
 });
 
-console.log(\`Dev server: \${server.url}\`);
+console.log(\`\\n  🏗️  Sanify dev server + Tailwind ready\\n  http://localhost:\${PORT}\\n\`);
 
 const shutdown = (): void => {
   tw.kill("SIGTERM");

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run dev-server.ts",
-    "build": "bun build ./src/main.ts --outdir ./dist --target browser --minify",
+    "build": "rm -rf dist && bun build ./index.html --outdir ./dist --minify",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
