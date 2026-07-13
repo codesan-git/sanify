@@ -5,17 +5,17 @@ description: Panduan untuk bekerja dengan Sanify Frontend framework — Web Comp
 
 # Sanify Framework Skill
 
-Framework frontend fine-grained berbasis Web Components asli. Komponen jalan **sekali**, reactivity **fine-grained** (signal nempel langsung ke node DOM), **tanpa virtual DOM** dan **tanpa diffing global**. Gaya SolidJS, ringan (~23 KB gzip npm, ~68 KB bundle). Versi terkini: **v0.5.4**.
+Framework frontend fine-grained berbasis Web Components asli. Komponen jalan **sekali**, reactivity **fine-grained** (signal nempel langsung ke node DOM), **tanpa virtual DOM** dan **tanpa diffing global**. Gaya SolidJS, ringan (~23 KB gzip npm, ~68 KB bundle). Versi terkini: **v0.6.0**.
 
 ## Memulai project baru
 
 ```bash
-bun create sanify my-app       # basic
-bun create sanify my-app --tailwind  # dengan Tailwind v4
+bun create sanify my-app                # basic
+bun create sanify my-app --tailwind     # dengan Tailwind v4
 cd my-app && bun install && bun dev
 ```
 
-Scaffold langsung siap pakai — dev server, HMR, TypeScript strict, SPA routing. Jangan setup manual.
+Scaffold langsung siap pakai — dev server, HMR, TypeScript strict, SPA routing. **Jangan setup manual.** Selalu pakai `bun create sanify` untuk project baru.
 
 ## Aturan utama (jangan dilanggar)
 
@@ -37,7 +37,7 @@ Scaffold langsung siap pakai — dev server, HMR, TypeScript strict, SPA routing
 
 **PENTING**: `--target=browser` baca `dist/index.js`, BUKAN `src/index.ts`. Setiap ubah source, WAJIB `bun run build`.
 
-## Arsitektur module (v0.5.4)
+## Arsitektur module (v0.6.0)
 
 ```
 packages/core/src/
@@ -54,7 +54,7 @@ packages/core/src/
 │   ├── resource.ts    — fetch: cache, dedupe, SWR, polling, retry, Suspense
 │   ├── mutation.ts    — Write-side counterpart
 │   ├── client.ts      — fetch wrapper with interceptors
-│   └── ws.ts          — WebSocket reaktif (createWS) — v0.5.4
+│   └── ws.ts          — WebSocket reaktif (createWS)
 ├── form/
 │   ├── form.ts        — createForm, field-level validation, async validators
 │   └── validators.ts  — string, number, boolean, email, custom, schema()
@@ -64,7 +64,7 @@ packages/core/src/
 └── index.ts           — Public API exports
 ```
 
-## API highlights (v0.5.4)
+## API highlights (v0.6.0)
 
 ### WebSocket reaktif (`createWS`)
 ```typescript
@@ -132,15 +132,15 @@ html`<button @click=${...}>`     // @event=...→ listener
 
 ### Template optimizations (v0.5.3+)
 
-- **Same strings skip**: kalau `bindChild` dapat TemplateResult dengan `strings` yang sama → skip re-render, binding existing tetap jalan
+- **Same strings skip**: kalau `bindChild` dapat TemplateResult dengan `strings` yang sama → skip re-render
 - **TextNode in-place**: nilai primitif update `nodeValue` tanpa bongkar DOM
 - **TransitionGroup FLIP**: reorder dianimasikan posisinya
 
 ### Error handling
 
 - `ErrorBoundary` directive — tangkap error di subtree
-- `onError(handler)` — global fallback untuk error yang lolos semua boundary
-- `findErrorHandler(owner)` — traverse rantai owner cari errorHandler terdekat
+- `onError(handler)` — global fallback
+- `findErrorHandler(owner)` — traverse rantai owner
 
 ## Reactivity internals
 
@@ -158,11 +158,6 @@ effect(fn) → new Effect(fn) → run()
   dispose(true) → run cleanups → remove from deps → mark disposed
 ```
 
-### Batching
-- `set()` → `schedule(effect)` → `pendingEffects.add` → microtask `flush()`
-- `batch(fn)` → `batchDepth++` → execute → `batchDepth--` → `flush()`
-- Beberapa `set()` dalam satu tick otomatis di-batch
-
 ### Owner tree
 ```
 Owner → parent/children → dispose cascade
@@ -171,16 +166,8 @@ Owner → parent/children → dispose cascade
   createRoot() → isolate scope, return dispose function
 ```
 
-## Tips development
-
-1. **Test reactivity**: `bun test`, assert setelah `batch(() => {})` untuk flush effect.
-2. **Test DOM**: butuh `happy-dom` (via `setup-dom.ts`), DOM-related test di file terpisah.
-3. **Check memory**: `__debug.enable()` → `__debug.stats()` lihat signal/effect count.
-4. **ErrorBoundary di test**: error dalam effect di-route ke ErrorBoundary, buat dummy ErrorBoundary untuk assert.
-5. **Router test**: `navigate()` sinkron, `batch()` flush, `await Promise.resolve()` untuk redirect dari guard.
-
 ## File referensi
 
 - `AGENTS.md` — panduan lengkap arsitektur, konvensi, utang teknis
 - `CHANGELOG.md` — riwayat perubahan per versi
-- `packages/core/test/` — 161 test di 22 file, referensi terbaik untuk perilaku yang diharapkan
+- `packages/core/test/` — 161 test di 22 file

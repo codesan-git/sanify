@@ -1,6 +1,6 @@
 {
   "name": "@sanify/core",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "Sanify Frontend core — fine-grained reactivity, Web Components, store, router, resource, forms. CSR-only, ~10 KB gzip, no virtual DOM",
   "type": "module",
   "license": "MIT",
