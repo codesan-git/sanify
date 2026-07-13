@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.5.4] — 2026-06-17
+
+### Added
+
+- **`createWS(url, options?)`** — WebSocket reaktif. Data masuk otomatis di-parse
+  JSON dan disimpan sebagai signal. Auto-reconnect dengan backoff, cleanup
+  otomatis saat component unmount. Return `{ data, status, error, send, close }`.
+  Cocok untuk real-time dashboard, live alert, monitoring.
+- **`pollingInterval` di `resource()`** — resource kini support polling berkala
+  (SWR style — tanpa loading flicker). Bekerja dengan/tanpa key cache.
+- **`retry` + `retryDelay` di `resource()`** — retry otomatis dengan exponential
+  backoff saat fetch gagal. Abort-aware (berhenti saat signal di-abort/scope dispose).
+
+### Fixed
+
+- **`navigate("/page#section")`**: hash fragment sekarang didukung. Hash-only
+  navigation (halaman sama, anchor beda) push history entry tanpa trigger
+  re-render.
+- **Custom element registration conflict**: warning bila tag sudah terdaftar
+  oleh library/framework lain (sebelumnya silent failure).
+
+---
+
 ## [0.5.3] — 2026-06-17
 
 ### Added

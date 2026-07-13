@@ -186,7 +186,14 @@ export function query(): URLSearchParams {
 
 export function navigate(to: string): void {
   const url = new URL(to, window.location.origin);
-  if (url.pathname === current() && url.search === getSearch()) return;
+  // Hash-only navigation: path & search sama, cuma hash berubah. Browser
+  // scroll ke anchor alami — tidak perlu update sinyal, tapi tetap push
+  // history entry agar back/forward bekerja.
+  if (url.pathname === current() && url.search === getSearch()) {
+    if (url.hash === (hasWindow ? window.location.hash : "")) return;
+    history.pushState({}, "", to);
+    return;
+  }
   saveScroll(); // simpan posisi sekarang sebelum entry diganti
   history.pushState({}, "", to);
   setCurrent(url.pathname);

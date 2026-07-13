@@ -27,6 +27,15 @@ export interface ResourceOptions<T> {
   key?: KeyOption;
   // Nilai awal sebelum fetch pertama selesai (dan saat key() === undefined).
   initial?: T;
+  // Interval polling (ms). Resource akan otomatis re-fetch setiap ms ini.
+  // Tidak memicu loading()/Suspense — hanya background refresh (SWR style).
+  // Timer dimulai setelah fetch pertama selesai. Default: tidak polling.
+  pollingInterval?: number;
+  // Berapa kali retry otomatis saat fetch gagal (exponential backoff).
+  // Default: 0 (tidak retry). Delay awal diatur via retryDelay.
+  retry?: number;
+  // Delay awal antar retry (ms), digandakan tiap percobaan. Default: 1000.
+  retryDelay?: number;
   // Berapa lama (ms) entry cache dianggap fresh. Cache hit ke entry yang sudah
   // lebih tua dari ini tetap mengembalikan data lama (UI tidak berkedip), TAPI
   // memicu refetch latar yang akan meng-update data saat selesai.
@@ -261,12 +270,39 @@ export function resource<T>(
       }
     }
 
-    // Abort fetch sebelumnya sebelum mulai baru (mis. key reaktif berubah cepat).
-    currentController?.abort();
-    currentController = new AbortController();
-    const promise = fetcher(currentController.signal);
-    if (key !== undefined) cache.set(key, { promise });
-    subscribe(++runId, promise, key);
+	    // Abort fetch sebelumnya sebelum mulai baru (mis. key reaktif berubah cepat).
+	    currentController?.abort();
+	    currentController = new AbortController();
+	    const signal = currentController.signal;
+
+	    let promise: Promise<T>;
+	    const maxRetries = options.retry ?? 0;
+	    if (maxRetries > 0) {
+	      const baseDelay = options.retryDelay ?? 1000;
+	      promise = (async (): Promise<T> => {
+	        let lastErr: unknown;
+	        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+	          if (signal.aborted) throw new Error("Aborted");
+	          try {
+	            return await fetcher(signal);
+	          } catch (err) {
+	            if (signal.aborted) throw err;
+	            lastErr = err;
+	            if (attempt < maxRetries) {
+	              await new Promise((r) =>
+	                setTimeout(r, baseDelay * Math.pow(2, attempt)),
+	              );
+	            }
+	          }
+	        }
+	        throw lastErr;
+	      })();
+	    } else {
+	      promise = fetcher(signal);
+	    }
+
+	    if (key !== undefined) cache.set(key, { promise });
+	    subscribe(++runId, promise, key);
   };
 
   effect(() => {
@@ -278,6 +314,29 @@ export function resource<T>(
     const handler = (): void => load(true);
     window.addEventListener("focus", handler);
     onCleanup(() => window.removeEventListener("focus", handler));
+  }
+
+  // Polling interval: background refresh berkala (SWR style — tidak set loading).
+  // Bekerja dengan key (cache-based) maupun tanpa key.
+  if (options.pollingInterval && options.pollingInterval > 0) {
+    const poll = (): void => {
+      if (hasKey) {
+        const k = readKey(options.key);
+        if (k !== undefined) backgroundRefresh(k);
+      } else {
+        // Tanpa key: fetch langsung, jangan set loading (SWR style).
+        const id = ++runId;
+        const controller = new AbortController();
+        currentController?.abort();
+        currentController = controller;
+        fetcher(controller.signal).then(
+          (result) => { if (id === runId) setData(() => result as T); },
+          () => {}, // swallow error untuk background poll
+        );
+      }
+    };
+    const interval = setInterval(poll, options.pollingInterval);
+    onCleanup(() => clearInterval(interval));
   }
 
   return { data, loading, error, refetch: () => load(true) };

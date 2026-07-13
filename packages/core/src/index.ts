@@ -83,6 +83,9 @@ export {
 } from "./resource/resource.ts";
 export type { Resource, ResourceOptions } from "./resource/resource.ts";
 
+export { createWS } from "./resource/ws.ts";
+export type { WSConnection, WSStatus, WSOptions } from "./resource/ws.ts";
+
 export { mutation } from "./resource/mutation.ts";
 export type { Mutation, MutationOptions } from "./resource/mutation.ts";
 

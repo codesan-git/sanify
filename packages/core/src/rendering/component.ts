@@ -239,7 +239,13 @@ export function component<P = Record<string, never>>(
     }
   }
 
-  if (!customElements.get(tag)) {
-    customElements.define(tag, SanifyElement);
-  }
+	  if (!customElements.get(tag)) {
+	    customElements.define(tag, SanifyElement);
+	  } else if (customElements.get(tag) !== SanifyElement) {
+	    console.warn(
+	      `sanify: tag "${tag}" sudah terdaftar oleh library/framework lain. ` +
+	      "Sanify tidak bisa override custom element yang sudah ada. " +
+	      "Gunakan nama tag yang unik.",
+	    );
+	  }
 }
