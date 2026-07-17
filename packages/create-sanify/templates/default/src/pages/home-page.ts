@@ -18,9 +18,10 @@ component("home-page", () => {
           <li>Resource async: loading, error, dan data sebagai sinyal</li>
         </ul>
         <div class="cluster">
-          <a class="btn btn--primary" href="/demo" data-link>Coba Demo</a>
-          <a class="btn btn--ghost" href="https://sanify.dev/docs" target="_blank" rel="noopener">Dokumentasi</a>
-        </div>
+                  <a class="btn btn--primary" href="/demo" data-link>Coba Demo</a>
+                  <a class="btn btn--ghost" href="/advanced" data-link>Advanced</a>
+                  <a class="btn btn--ghost" href="https://sanify.dev/docs" target="_blank" rel="noopener">Dokumentasi</a>
+                </div>
       </div>
     </div>
   `;

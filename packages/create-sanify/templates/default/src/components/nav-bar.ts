@@ -5,6 +5,7 @@ import { component, html, current } from "@sanify/core";
 const links = [
   { href: "/",     label: "Home" },
   { href: "/demo", label: "Demo" },
+  { href: "/advanced", label: "Advanced" },
 ];
 
 component("nav-bar", () => {

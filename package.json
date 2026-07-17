@@ -18,7 +18,7 @@
     "@sanify/core": "workspace:*",
     "@types/bun": "latest",
     "happy-dom": "^20.10.1",
-    "typescript": "^5.9.0"
+    "typescript": "^7.0.0"
   },
   "engines": {
     "bun": ">=1.3.0"

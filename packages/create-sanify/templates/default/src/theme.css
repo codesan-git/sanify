@@ -2,19 +2,8 @@
   Theme: Catppuccin Latte — orange & green pastel variant
   Dark:  Catppuccin Mocha — same primaries (pastel-native)
 
-  Untuk Tailwind v4 build pipeline (tanpa CDN):
-    1. Pasang: bun add -d tailwindcss
-    2. Di CSS entry point: @import "tailwindcss";
-    3. Tambahkan: @theme inline { --color-primary: var(--primary); ... }
-    Tidak ada tailwind.config.ts — konfigurasi dilakukan via CSS.
-
-  Gunakan kelas Tailwind saat CDN aktif:
-    bg-background / text-foreground        ← warna dasar halaman
-    bg-card / text-card-foreground         ← panel & kartu
-    bg-primary / text-primary-foreground   ← orange pastel
-    bg-secondary / text-secondary-foreground ← green pastel
-    bg-muted / text-muted-foreground       ← elemen subtle
-    border-border, ring-ring
+  Semua nilai desain disimpan sebagai custom properties.
+  Gunakan `var(--token)` di seluruh CSS — jangan hardcode nilai.
 
   Dark mode: tambahkan class "dark" pada <html>.
 */
@@ -40,6 +29,13 @@
 
   --border:              #ccd0da;
   --ring:                #f5a97f;
+
+  /* Easing tokens — pakai di transition/animation (lihat sanify-animation skill) */
+  --ease-out:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-snap:   cubic-bezier(0.2, 0, 0, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* ── Dark (Catppuccin Mocha base) ────────────────────────────────────────── */
@@ -63,4 +59,13 @@
 
   --border:              #45475a;
   --ring:                #fab387;
+
+  /* Easing tokens — nilai sama dengan light, tapi didefinisikan ulang
+     agar tidak perlu dependensi ke :root. Kalau mau easing berbeda
+     di dark mode (jarang), bisa diubah di sini. */
+  --ease-out:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-snap:   cubic-bezier(0.2, 0, 0, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
